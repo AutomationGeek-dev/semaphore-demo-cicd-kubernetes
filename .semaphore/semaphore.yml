@@ -10,14 +10,16 @@ blocks:
       jobs:
         - name: docker build
           commands:
+            - 'echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin'
             - checkout
-            - docker login -u $SEMAPHORE_REGISTRY_USERNAME -p $SEMAPHORE_REGISTRY_PASSWORD $SEMAPHORE_REGISTRY_URL
-            - 'docker pull $SEMAPHORE_REGISTRY_URL/semaphore-demo-cicd-kubernetes:latest || true'
-            - docker build \
-            - '--cache-from $SEMAPHORE_REGISTRY_URL/seamphore-demo-cicd-kubernetes:latest \'
-            - '-t $SEMAPHORE_REGISTRY_URL/semaphore-demo-cicd-kubernetes:$SEMAPHORE_WORKFLOW_ID .'
-            - docker push \
-            - '$SEMAPHORE_REGISTRY_URL/semaphore-demo-cicd-kubernetes:$SEMAPHORE_WORKFLOW_ID'
+            - docker-compose build
+            - 'docker tag pyflasksemaphore:latest "$DOCKER_USERNAME"/pyflasksemaphore:latest'
+            - 'docker tag pyflasksemaphore:latest "$DOCKER_USERNAME"/pyflasksemaphore:$SEMAPHORE_WORKFLOW_ID'
+            - 'docker push "$DOCKER_USERNAME"/pyflasksemaphore:latest'
+            - 'docker push "$DOCKER_USERNAME"/pyflasksemaphore:$SEMAPHORE_WORKFLOW_ID'
+            - docker images
+      secrets:
+        - name: Docker Secrets
   - name: Tests
     task:
       prologue:
@@ -51,4 +53,13 @@ blocks:
     task:
       jobs:
         - name: Docker Push
-          commands: []
+          commands:
+            - docker login -u $SEMAPHORE_REGISTRY_USERNAME \
+            - '-p $SEMAPHORE_REGISTRY_PASSWORD $SEMAPHORE_REGISTRY_URL'
+            - docker pull \
+            - '$SEMAPHORE_REGISTRY_URL/semaphore-demo-cicd-kubernetes:$SEMAPHORE_WORKFLOW_ID'
+            - docker tag \
+            - '$SEMAPHORE_REGISTRY_URL/semaphore-demo-cicd-kubernetes:$SEMAPHORE_WORKFLOW_ID \'
+            - '$SEMAPHORE_REGISTRY_URL/semaphore-demo-cicd-kubernetes:latest'
+            - docker push \
+            - '$SEMAPHORE_REGISTRY_URL/semaphore-demo-cicd-kubernetes:latest'
